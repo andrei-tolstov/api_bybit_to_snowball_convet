@@ -2,10 +2,16 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	bybit "github.com/andrei-tolstov/bybit.go.api.yield.history"
+	models "github.com/andrei-tolstov/bybit.go.api.yield.history/models"
+	// "github.com/mitchellh/mapstructure"
 )
+
+
+
 
 func main() {
 	BYBIT_API_KEY := os.Getenv("BYBIT_API_KEY")
@@ -19,7 +25,7 @@ func main() {
 		return
     }
 	// торговый аккаунт
-	// GetTransaction(BYBIT_API_KEY, BYBIT_API_SECRET)
+	GetTransaction(BYBIT_API_KEY, BYBIT_API_SECRET)
 	// актуальный баланс
 	// GetAccountWallet(BYBIT_API_KEY, BYBIT_API_SECRET)
 	// deposit
@@ -27,7 +33,7 @@ func main() {
 	// earn order history
 	// GetEarnRedeemOrder(BYBIT_API_KEY, BYBIT_API_SECRET)
 	// get earn out history
-	GetYieldHistory(BYBIT_API_KEY, BYBIT_API_SECRET)
+	// GetYieldHistory(BYBIT_API_KEY, BYBIT_API_SECRET)
 
 	
 }
@@ -40,7 +46,14 @@ func GetTransaction(BYBIT_API_KEY, BYBIT_API_SECRET string) {
 		fmt.Println(err)
 		return
 	}
-	fmt.Println(bybit.PrettyPrint(accountResult))
+	// конвертирую interface в struct
+	var httpAnsver models.TransactionLogInfo
+	tempBytes, _ := json.Marshal(accountResult.Result)
+	err = json.Unmarshal(tempBytes, &httpAnsver)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(httpAnsver.List[0].Type)
 }
 
 func GetAccountWallet(BYBIT_API_KEY, BYBIT_API_SECRET string) {
