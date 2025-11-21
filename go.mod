@@ -2,10 +2,7 @@ module github.com/andrei-tolstov/api_bybit_to_snowball_convet
 
 go 1.25.4
 
-require (
-	github.com/andrei-tolstov/bybit.go.api.yield.history v0.0.0-20251119164038-50cc8740c68e
-	github.com/mitchellh/mapstructure v1.5.0
-)
+require github.com/andrei-tolstov/bybit.go.api.yield.history v0.0.0-20251119164038-50cc8740c68e
 
 require (
 	github.com/bitly/go-simplejson v0.5.1 // indirect
