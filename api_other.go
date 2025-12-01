@@ -2,28 +2,37 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	// "encoding/json"
 	"fmt"
 	bybit "github.com/andrei-tolstov/bybit.go.api.yield.history"
-	models "github.com/andrei-tolstov/bybit.go.api.yield.history/models"
+	// models "github.com/andrei-tolstov/bybit.go.api.yield.history/models"
+	"time"
 )
 
-func GetTransaction(BYBIT_API_KEY, BYBIT_API_SECRET string) {
-	client := bybit.NewBybitHttpClient(BYBIT_API_KEY, BYBIT_API_SECRET, bybit.WithBaseURL(bybit.MAINNET))
-	params := map[string]interface{}{"accountType": "UNIFIED", "startTime": 1762290000000, "endTime": 1762549200000}
-	accountResult, err := client.NewUtaBybitServiceWithParams(params).GetTransactionLog(context.Background())
-	if err != nil {
-		fmt.Println(err)
-		return
+func GetTransaction(client *bybit.Client, startTime time.Time, endTime time.Time) {
+	timeChunk := GetTimeSlice(startTime, endTime, 7)
+		for timeChunkIndex := range timeChunk {
+			currentStart := timeChunk[timeChunkIndex]["start"]
+			currentEnd := timeChunk[timeChunkIndex]["end"]
+			params := map[string]interface{}{"accountType": "UNIFIED", "startTime": currentStart, "endTime": currentEnd, "limit": 50}
+			accountResult, err := client.NewUtaBybitServiceWithParams(params).GetTransactionLog(context.Background())
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			fmt.Println(bybit.PrettyPrint(accountResult.Result))
+			// конвертирую interface в struct
+			// var httpAnsver models.TransactionLogInfo
+			// tempBytes, _ := json.Marshal(accountResult.Result)
+			// err = json.Unmarshal(tempBytes, &httpAnsver)
+			// if err != nil {
+			// 	panic(err)
+			// }
+			// if len(httpAnsver.List) == 0 {
+			// 	continue
+			// }
+			// fmt.Println(httpAnsver.List[0].Type)
 	}
-	// конвертирую interface в struct
-	var httpAnsver models.TransactionLogInfo
-	tempBytes, _ := json.Marshal(accountResult.Result)
-	err = json.Unmarshal(tempBytes, &httpAnsver)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(httpAnsver.List[0].Type)
 }
 
 func GetAccountWallet(BYBIT_API_KEY, BYBIT_API_SECRET string) {

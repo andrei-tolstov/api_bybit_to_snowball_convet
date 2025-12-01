@@ -66,12 +66,31 @@ type CoinChainInfo struct {
 }
 
 type KLineResponseRaw struct {
-	List     [][]string `json:"list"`
-	Symbol   string     `json:"symbol"`
+	List   [][]string `json:"list"`
+	Symbol string     `json:"symbol"`
 }
 
 type MarketlineCandle struct {
-	StartTime  string `json:"startTime"`
-	OpenPrice  string `json:"openPrice"`
-	HighPrice  string `json:"highPrice"`
+	StartTime string `json:"startTime"`
+	OpenPrice string `json:"openPrice"`
+	HighPrice string `json:"highPrice"`
+}
+
+// https://bybit-exchange.github.io/docs/v5/asset/deposit/internal-deposit-record
+type DepositInternalRecords struct {
+	Rows           []DepositInternalRecord `json:"rows"`
+	NextPageCursor string                  `json:"nextPageCursor"`
+}
+
+type DepositInternalRecord struct {
+	Id                  string `json:"id"`
+	Type                string `json:"type"` // 1: Internal deposit
+	Coin                string `json:"coin"`
+	Amount              string `json:"amount"`
+	Status              int    `json:"status"`  //1=Processing 2=Success 3=deposit failed
+	Address             string `json:"address"` // Email address or phone number
+	CreatedTime         string `json:"createdTime"`
+	TxID                string `json:"txID"`
+	TaxDepositRecordsId string `json:"taxDepositRecordsId"`
+	TaxStatus           string `json:"taxStatus"`
 }

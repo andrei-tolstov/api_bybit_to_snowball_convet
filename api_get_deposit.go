@@ -34,12 +34,12 @@ func GetDepositRecords(client *bybit.Client, startDate time.Time, endDate time.T
 
 			newSnowBallData := snowBallData{
 				Event:           "Buy",
-				Date:            ConvertUnixString(dataList[dataSliceIndex].SuccessAt),                                   // конвертировать в формат 2020-02-01
-				Symbol:          GetSymbol(dataList[dataSliceIndex].Coin),                                                // конвертировать в COIN-USD
-				Price:           GetMarketKline(client, dataList[dataSliceIndex].Coin, "USDT", dataList[dataSliceIndex].SuccessAt),        // запросить цену на время депозита
-				Quantity:        dataList[dataSliceIndex].Amount,                                                         // кол-во
-				Currency:        "USD",                                                                                   // всегда сводим к USD
-				FeeTax:          GetWithdrawalFee(client, dataList[dataSliceIndex].Coin, dataList[dataSliceIndex].Chain), // расчет от комиссии за сеть по данным bybit
+				Date:            ConvertUnixString(dataList[dataSliceIndex].SuccessAt),                                             // конвертировать в формат 2020-02-01
+				Symbol:          GetSymbol(dataList[dataSliceIndex].Coin),                                                          // конвертировать в COIN-USD
+				Price:           GetMarketKline(client, dataList[dataSliceIndex].Coin, "USDT", dataList[dataSliceIndex].SuccessAt), // запросить цену на время депозита
+				Quantity:        dataList[dataSliceIndex].Amount,                                                                   // кол-во
+				Currency:        "USD",                                                                                             // всегда сводим к USD
+				FeeTax:          GetWithdrawalFee(client, dataList[dataSliceIndex].Coin, dataList[dataSliceIndex].Chain),           // расчет от комиссии за сеть по данным bybit
 				Exchange:        "Bybit",
 				NKD:             "0",
 				FeeCurrency:     "",
@@ -73,6 +73,73 @@ func GetSliceDepositRecords(client *bybit.Client, startTime int64, endTime int64
 	rows := httpAnsver.Rows
 	if httpAnsver.NextPageCursor != "" {
 		iterRows := GetSliceDepositRecords(client, startTime, endTime, httpAnsver.NextPageCursor)
+		if len(iterRows) != 0 {
+			rows = append(rows, iterRows...)
+		}
+	}
+	return rows
+}
+
+// получаю записи о внутренних депозитах
+func GetInternalDepositRecords(client *bybit.Client, startDate time.Time, endDate time.Time) {
+	timeChunk := GetTimeSlice(startDate, endDate, DEPOSIT_DAYS_CHUNK_INTERVAL)
+	for timeChunkIndex := range timeChunk {
+		currentStart := timeChunk[timeChunkIndex]["start"]
+		currentEnd := timeChunk[timeChunkIndex]["end"]
+
+		// Логирование в читаемом формате
+		// startStr := time.UnixMilli(currentStart).Format(time.RFC3339)
+		// endStr := time.UnixMilli(currentEnd).Format(time.RFC3339)
+		// fmt.Printf("Запрос депозитов с %s по %s...\n", startStr, endStr)
+
+		dataList := GetSliceInternalDepositRecords(client, currentStart, currentEnd, "")
+		for dataSliceIndex := range dataList {
+			// fmt.Println(dataList[dataSliceIndex])
+			// all deposit = buy
+			if dataList[dataSliceIndex].Status != 2 {
+				continue
+			}
+			newSnowBallData := snowBallData{
+				Event:           "Buy",
+				Date:            ConvertUnixString(dataList[dataSliceIndex].CreatedTime),                                             // конвертировать в формат 2020-02-01
+				Symbol:          GetSymbol(dataList[dataSliceIndex].Coin),                                                          // конвертировать в COIN-USD
+				Price:           GetMarketKline(client, dataList[dataSliceIndex].Coin, "USDT", dataList[dataSliceIndex].CreatedTime), // запросить цену на время депозита
+				Quantity:        dataList[dataSliceIndex].Amount,                                                                   // кол-во
+				Currency:        "USD",                                                                                             // всегда сводим к USD
+				FeeTax:          "0",         
+				Exchange:        "Bybit",
+				NKD:             "0",
+				FeeCurrency:     "",
+				DoNotAdjustCash: "True", // Не обновлять валюту
+				Note:            "p2p_bybit_deposit",
+			}
+			snowBallDataSlice = append(snowBallDataSlice, newSnowBallData)
+		}
+	}
+}
+
+func GetSliceInternalDepositRecords(client *bybit.Client, startTime int64, endTime int64, cursor string) []DepositInternalRecord {
+	params := map[string]interface{}{"limit": DEPOSIT_DEFAULT_API_LIMIT, "startTime": startTime, "endTime": endTime, "cursor": cursor}
+	if cursor == "" {
+		delete(params, "cursor")
+	}
+	serverResult, err := client.NewUtaBybitServiceWithParams(params).GetInternalDepositRecords(context.Background())
+	if err != nil {
+		fmt.Println(err)
+		return []DepositInternalRecord{}
+	}
+	// fmt.Println(bybit.PrettyPrint(serverResult.Result))
+	var httpAnsver DepositInternalRecords
+	tempBytes, _ := json.Marshal(serverResult.Result)
+	err = json.Unmarshal(tempBytes, &httpAnsver)
+	if err != nil {
+		fmt.Printf("Ошибка декодирования JSON: %v\n", err)
+		return []DepositInternalRecord{}
+	}
+	// fmt.Println(httpAnsver.List[0].Type)
+	rows := httpAnsver.Rows
+	if httpAnsver.NextPageCursor != "" {
+		iterRows := GetSliceInternalDepositRecords(client, startTime, endTime, httpAnsver.NextPageCursor)
 		if len(iterRows) != 0 {
 			rows = append(rows, iterRows...)
 		}

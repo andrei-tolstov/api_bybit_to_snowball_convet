@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	bybit "github.com/andrei-tolstov/bybit.go.api.yield.history"
-	"strconv"
-	"time"
-	"strings"
 	"log"
+	"strconv"
+	"strings"
+	"time"
 )
 
 // пока одно значение может в будущем будут еще
@@ -95,7 +95,7 @@ func GetMarketKline(client *bybit.Client, coin string, pairCoin string, timeUnix
 		return "1"
 	}
 
-	// Получаем временные метки 
+	// Получаем временные метки
 	startTs, endTs, err := GetMinuteBoundsFromString(timeUnixMilli)
 	if err != nil {
 		fmt.Printf("ошибка времени: %w", err)
@@ -104,7 +104,7 @@ func GetMarketKline(client *bybit.Client, coin string, pairCoin string, timeUnix
 
 	params := map[string]interface{}{
 		"symbol":   symbol,
-		"interval": "1", 
+		"interval": "1",
 		"start":    startTs,
 		"end":      endTs,
 		"limit":    1,
@@ -122,7 +122,7 @@ func GetMarketKline(client *bybit.Client, coin string, pairCoin string, timeUnix
 		return "0"
 	}
 
-candle, err := ConvertRawKLine(jsonBytes)
+	candle, err := ConvertRawKLine(jsonBytes)
 	if err != nil {
 		log.Printf("Внимание: не удалось получить свечу для %s: %v", symbol, err)
 		return "0" // Или return "0", err если хотите прервать выполнение
@@ -139,7 +139,7 @@ func GetMinuteBoundsFromString(timeUnixMilliStr string) (startMilli int64, endMi
 
 	t := time.UnixMilli(inputMilli)
 	startOfMinute := t.Truncate(time.Minute)
-	
+
 	// Конец минуты - это начало следующей минуты
 	endOfMinuteExclusive := startOfMinute.Add(time.Minute)
 

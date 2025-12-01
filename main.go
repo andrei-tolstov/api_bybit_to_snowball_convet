@@ -32,13 +32,14 @@ func main() {
 	// deposit
 	// https://bybit-exchange.github.io/docs/v5/asset/deposit/deposit-record
 	//
-	GetDepositRecords(client, startDate, endDate)
-	for dataSliceIndex := range snowBallDataSlice {
-		fmt.Println(snowBallDataSlice[dataSliceIndex])
-	}
+	// GetDepositRecords(client, startDate, endDate)
+	// GetInternalDepositRecords(client, startDate, endDate)
+	// for dataSliceIndex := range snowBallDataSlice {
+	// 	fmt.Println(snowBallDataSlice[dataSliceIndex])
+	// }
 
 	// торговый аккаунт
-	// GetTransaction(BYBIT_API_KEY, BYBIT_API_SECRET)
+	GetTransaction(client, startDate, endDate)
 	// актуальный баланс
 	// GetAccountWallet(BYBIT_API_KEY, BYBIT_API_SECRET)
 
