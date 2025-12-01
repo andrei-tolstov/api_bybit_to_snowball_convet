@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 	"strings"
+	"log"
 )
 
 // пока одно значение может в будущем будут еще
@@ -89,64 +90,83 @@ func GetTimeSlice(startDate time.Time, endDate time.Time, days int) []map[string
 }
 
 func GetMarketKline(client *bybit.Client, coin string, pairCoin string, timeUnixMilli string) string {
-	symbol := strings.ToUpper(coin + pairCoin) // like BTCUSDT, uppercase only
+	symbol := strings.ToUpper(coin + pairCoin)
 	if symbol == "USDTUSDT" {
 		return "1"
 	}
-	startUnixSec, endUnixSec, err := GetMinuteBoundsFromString(timeUnixMilli)
+
+	// Получаем временные метки 
+	startTs, endTs, err := GetMinuteBoundsFromString(timeUnixMilli)
 	if err != nil {
-		fmt.Errorf("ошибка получения цены: %w", err)
+		fmt.Printf("ошибка времени: %w", err)
 		return "0"
 	}
 
-	params := map[string]interface{}{"symbol": symbol, "interval": 1, "start": startUnixSec, "end": endUnixSec, "limit": "1"}
+	params := map[string]interface{}{
+		"symbol":   symbol,
+		"interval": "1", 
+		"start":    startTs,
+		"end":      endTs,
+		"limit":    1,
+	}
+
 	serverResult, err := client.NewUtaBybitServiceWithParams(params).GetMarketKline(context.Background())
 	if err != nil {
-		fmt.Errorf("ошибка получения цены: %w", err)
-		return "0"
-	}
-	tempBytes, err := json.Marshal(serverResult.Result)
-	if err != nil {
-		fmt.Errorf("ошибка получения цены: %w", err)
+		log.Printf("ошибка API Bybit: %w", err)
 		return "0"
 	}
 
-	httpRespon, err := ConvertRawKLine(string(tempBytes))
+	jsonBytes, err := json.Marshal(serverResult.Result)
 	if err != nil {
-		fmt.Errorf("ошибка получения цены: %w", err)
+		log.Printf("ошибка маршалинга результата: %w", err)
 		return "0"
 	}
 
-	// fmt.Println(httpRespon[0].OpenPrice)
-	return httpRespon[0].OpenPrice
+candle, err := ConvertRawKLine(jsonBytes)
+	if err != nil {
+		log.Printf("Внимание: не удалось получить свечу для %s: %v", symbol, err)
+		return "0" // Или return "0", err если хотите прервать выполнение
+	}
+
+	return candle.OpenPrice
 }
 
-func GetMinuteBoundsFromString(timeUnixMilliStr string) (startUnixSec int64, endUnixSec int64, err error) {
-    timeUnixMilli, err := strconv.ParseInt(timeUnixMilliStr, 10, 64)
-    if err != nil {
-        return 0, 0, fmt.Errorf("не удалось преобразовать строку '%s' в число: %w", timeUnixMilliStr, err)
-    }
-	t := time.UnixMilli(timeUnixMilli)
+func GetMinuteBoundsFromString(timeUnixMilliStr string) (startMilli int64, endMilli int64, err error) {
+	inputMilli, err := strconv.ParseInt(timeUnixMilliStr, 10, 64)
+	if err != nil {
+		return 0, 0, fmt.Errorf("не удалось преобразовать строку '%s': %w", timeUnixMilliStr, err)
+	}
+
+	t := time.UnixMilli(inputMilli)
 	startOfMinute := t.Truncate(time.Minute)
+	
+	// Конец минуты - это начало следующей минуты
 	endOfMinuteExclusive := startOfMinute.Add(time.Minute)
-	startUnixSec = startOfMinute.UnixMilli()
-	endUnixSec = endOfMinuteExclusive.UnixMilli()
-	return startUnixSec, endUnixSec, nil
+
+	return startOfMinute.UnixMilli(), endOfMinuteExclusive.UnixMilli(), nil
 }
 
-func ConvertRawKLine(jsonString string) ([]MarketlineCandle, error) {
+func ConvertRawKLine(jsonBytes []byte) (*MarketlineCandle, error) {
 	var rawResponse KLineResponseRaw
-    // Распаковка сырого ответа
-	if err := json.Unmarshal([]byte(jsonString), &rawResponse); err != nil {
-		return nil, fmt.Errorf("ошибка распаковки сырого JSON: %w", err)
+
+	if err := json.Unmarshal(jsonBytes, &rawResponse); err != nil {
+		return nil, fmt.Errorf("ошибка распаковки JSON: %w", err)
 	}
-	var dataList []MarketlineCandle
-      
-	dataList = append(dataList, MarketlineCandle{
-		StartTime:      rawResponse.List[0][0],
-		OpenPrice:      rawResponse.List[0][1],
-		HighPrice:      rawResponse.List[0][4],
-	})
-	
-	return dataList, nil
+
+	// Проверяем, есть ли данные.
+	if len(rawResponse.List) == 0 {
+		return nil, fmt.Errorf("получен пустой список свечей")
+	}
+
+	// Проверяем формат внутренней свечи (должно быть минимум 5 полей)
+	firstCandle := rawResponse.List[0]
+	if len(firstCandle) < 5 {
+		return nil, fmt.Errorf("некорректный формат данных свечи")
+	}
+
+	return &MarketlineCandle{
+		StartTime: firstCandle[0],
+		OpenPrice: firstCandle[1],
+		HighPrice: firstCandle[4],
+	}, nil
 }

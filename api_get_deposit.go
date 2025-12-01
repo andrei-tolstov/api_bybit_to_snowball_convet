@@ -37,8 +37,6 @@ func GetDepositRecords(client *bybit.Client, startDate time.Time, endDate time.T
 				Date:            ConvertUnixString(dataList[dataSliceIndex].SuccessAt),                                   // конвертировать в формат 2020-02-01
 				Symbol:          GetSymbol(dataList[dataSliceIndex].Coin),                                                // конвертировать в COIN-USD
 				Price:           GetMarketKline(client, dataList[dataSliceIndex].Coin, "USDT", dataList[dataSliceIndex].SuccessAt),        // запросить цену на время депозита
-
-				// Price:           GetMarketKline(client, dataList[dataSliceIndex].Coin, "USDT", dataList[dataSliceIndex].SuccessAt),        // запросить цену на время депозита
 				Quantity:        dataList[dataSliceIndex].Amount,                                                         // кол-во
 				Currency:        "USD",                                                                                   // всегда сводим к USD
 				FeeTax:          GetWithdrawalFee(client, dataList[dataSliceIndex].Coin, dataList[dataSliceIndex].Chain), // расчет от комиссии за сеть по данным bybit
